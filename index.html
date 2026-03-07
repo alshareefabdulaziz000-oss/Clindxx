@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClinDx — Clinical Differential Support</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #07090f;
+  --bg2:       #0c1019;
+  --card:      #0f1520;
+  --card2:     #141d2e;
+  --border:    rgba(255,255,255,0.06);
+  --border2:   rgba(255,255,255,0.1);
+  --text:      #dde4f0;
+  --muted:     #5a6a88;
+  --dim:       #2a3a58;
+  --blue:      #5b9cf6;
+  --blue-glow: rgba(91,156,246,0.15);
+  --gold:      #c9a84c;
+  --silver:    #8fa3be;
+  --bronze:    #b07040;
+  --red:       #e05555;
+  --green:     #4ade80;
+  --display:   'Cormorant Garamond', serif;
+  --ui:        'Syne', sans-serif;
+  --mono:      'JetBrains Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ui);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  top: -30vh; left: 50%;
+  transform: translateX(-50%);
+  width: 80vw; height: 60vh;
+  background: radial-gradient(ellipse, rgba(59,90,160,0.12) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+.wrap {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+  position: relative; z-index: 1;
+}
+/* HEADER */
+.hdr {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 40px 0 32px; margin-bottom: 40px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-eye {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em;
+  color: var(--dim); text-transform: uppercase; margin-bottom: 6px;
+}
+.logo-name {
+  font-family: var(--display); font-size: 42px; font-weight: 300;
+  letter-spacing: -0.01em; line-height: 1; color: var(--text);
+}
+.logo-name em { font-style: italic; color: var(--blue); }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--card); border: 1px solid var(--border2);
+  color: var(--muted); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+}
+.icon-btn:hover { color: var(--blue); border-color: var(--blue); background: var(--blue-glow); }
+/* FORM */
+.f-label {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.f-label .req { color: var(--red); font-size: 11px; }
+.f-label .opt { color: var(--dim); font-size: 9px; }
+.f-group { margin-bottom: 30px; }
+textarea, input[type=text], select {
+  width: 100%; background: var(--card); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--ui); font-size: 14px; line-height: 1.6;
+  padding: 14px 16px; border-radius: 12px; outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  resize: none; -webkit-appearance: none; appearance: none;
+}
+textarea:focus, input[type=text]:focus, select:focus {
+  border-color: var(--blue); background: var(--card2);
+  box-shadow: 0 0 0 3px rgba(91,156,246,0.08);
+}
+textarea::placeholder, input::placeholder { color: var(--dim); font-size: 13px; }
+#symptoms { min-height: 104px; }
+#labs     { min-height: 76px; }
+.img-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sel-wrap { position: relative; }
+.sel-wrap::after {
+  content: '▾'; position: absolute; right: 14px; top: 50%;
+  transform: translateY(-50%); color: var(--muted); pointer-events: none; font-size: 11px;
+}
+select option { background: var(--card2); }
+/* TOGGLES */
+.tog-row { display: flex; gap: 10px; }
+.tog {
+  flex: 1; padding: 13px; text-align: center;
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--muted); border-radius: 12px;
+  font-family: var(--ui); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all 0.18s;
+}
+.tog:hover { border-color: var(--border2); color: var(--text); }
+.tog.on { background: rgba(91,156,246,0.1); border-color: var(--blue); color: #a0c4ff; }
+.preg-wrap { margin-top: 14px; display: none; }
+.preg-wrap.show { display: block; }
+/* ANALYZE BTN */
+.go-btn {
+  width: 100%; padding: 18px;
+  background: linear-gradient(135deg, #3b6fd4 0%, #5b9cf6 100%);
+  color: #fff; border: none; border-radius: 14px;
+  font-family: var(--ui); font-size: 15px; font-weight: 600;
+  letter-spacing: 0.04em; cursor: pointer; transition: all 0.25s;
+  position: relative; overflow: hidden; margin-top: 6px;
+}
+.go-btn::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 55%);
+}
+.go-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(59,111,212,0.4); }
+.go-btn:active { transform: translateY(0); }
+.go-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+/* ERROR */
+.err {
+  display: none; margin-top: 16px;
+  background: rgba(224,85,85,0.07); border: 1px solid rgba(224,85,85,0.25);
+  border-radius: 12px; padding: 16px 18px; color: #f09090;
+  font-size: 13px; line-height: 1.65;
+}
+.err.show { display: block; }
+.err strong { display: block; margin-bottom: 4px; color: #e08080; font-size: 11px; letter-spacing: 0.05em; font-family: var(--mono); text-transform: uppercase; }
+/* LOADING */
+.loading { display: none; text-align: center; padding: 72px 0; }
+.loading.show { display: block; }
+.spin-ring {
+  width: 52px; height: 52px; margin: 0 auto 22px;
+  border: 1.5px solid var(--border2); border-top-color: var(--blue);
+  border-radius: 50%; animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+/* RESULTS */
+.results { display: none; margin-top: 52px; }
+.results.show { display: block; }
+.results-hdr {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 24px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.results-hdr-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; color: var(--dim); text-transform: uppercase; }
+.results-hdr-line { flex: 1; height: 1px; background: var(--border); }
+/* DX CARD */
+.dx {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 26px 28px; margin-bottom: 16px;
+  position: relative; overflow: hidden;
+  animation: fadeUp 0.45s ease backwards;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.dx::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%; border-radius: 3px 0 0 3px;
+}
+.dx:nth-child(1) { animation-delay: 0.05s; }
+.dx:nth-child(1)::before { background: var(--gold); }
+.dx:nth-child(2) { animation-delay: 0.15s; }
+.dx:nth-child(2)::before { background: var(--silver); }
+.dx:nth-child(3) { animation-delay: 0.25s; }
+.dx:nth-child(3)::before { background: var(--bronze); }
+.dx:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dx-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+.dx-name { font-family: var(--display); font-size: 24px; font-weight: 400; color: var(--text); line-height: 1.2; flex: 1; }
+.rank-chip {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  padding: 4px 11px; border-radius: 20px; flex-shrink: 0; margin-top: 3px;
+}
+.dx:nth-child(1) .rank-chip { background: rgba(201,168,76,0.12); color: var(--gold);   border: 1px solid rgba(201,168,76,0.25); }
+.dx:nth-child(2) .rank-chip { background: rgba(143,163,190,0.1);  color: var(--silver); border: 1px solid rgba(143,163,190,0.2); }
+.dx:nth-child(3) .rank-chip { background: rgba(176,112,64,0.1);   color: var(--bronze); border: 1px solid rgba(176,112,64,0.2); }
+.prob-row { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.prob-track { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.prob-fill { height: 100%; border-radius: 2px; width: 0; transition: width 1.1s cubic-bezier(0.4,0,0.2,1); }
+.dx:nth-child(1) .prob-fill { background: linear-gradient(90deg, #b8902a, var(--gold)); }
+.dx:nth-child(2) .prob-fill { background: linear-gradient(90deg, #6a80a0, var(--silver)); }
+.dx:nth-child(3) .prob-fill { background: linear-gradient(90deg, #906040, var(--bronze)); }
+.prob-num { font-family: var(--mono); font-size: 12px; color: var(--muted); min-width: 36px; text-align: right; }
+.tx { margin-bottom: 18px; }
+.tx-head { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.tx-lbl { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; color: var(--dim); text-transform: uppercase; }
+.g-badge {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.04em;
+  padding: 2px 9px; border-radius: 20px;
+  background: rgba(91,156,246,0.08); border: 1px solid rgba(91,156,246,0.18); color: var(--blue);
+}
+.tx-body { font-size: 13.5px; color: #8fa8cc; line-height: 1.7; }
+.sel-btn {
+  width: 100%; margin-top: 20px; padding: 13px;
+  background: transparent; border: 1px solid var(--border2); color: var(--muted);
+  border-radius: 11px; font-family: var(--ui); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.18s; letter-spacing: 0.02em;
+}
+.sel-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-glow); }
+/* DRAWER */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; backdrop-filter: blur(6px); }
+.overlay.show { display: block; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 360px; max-width: 92vw;
+  background: var(--bg2); border-left: 1px solid var(--border2); z-index: 201;
+  padding: 36px 28px; display: flex; flex-direction: column; gap: 28px;
+  transform: translateX(100%); transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+}
+.drawer.open { transform: translateX(0); }
+.drawer-title { font-family: var(--display); font-size: 26px; font-weight: 300; color: var(--text); }
+.drawer-close { position: absolute; top: 22px; right: 22px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+.drawer-close:hover { color: var(--text); }
+.key-link { font-family: var(--mono); font-size: 11px; color: var(--blue); text-decoration: none; letter-spacing: 0.04em; }
+.key-link:hover { text-decoration: underline; }
+.save-btn {
+  padding: 13px; background: linear-gradient(135deg, #3b6fd4, #5b9cf6); color: #fff;
+  border: none; border-radius: 11px; font-family: var(--ui); font-size: 14px;
+  font-weight: 500; cursor: pointer; transition: opacity 0.2s;
+}
+.save-btn:hover { opacity: 0.88; }
+.key-ok { font-family: var(--mono); font-size: 11px; color: var(--green); display: none; letter-spacing: 0.05em; }
+.key-ok.show { display: block; }
+.drawer-note { font-size: 12px; color: var(--dim); line-height: 1.75; }
+.key-preview { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; }
+/* MODAL */
+.m-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85); z-index: 300;
+  align-items: center; justify-content: center; padding: 24px;
+  backdrop-filter: blur(8px);
+}
+.m-overlay.show { display: flex; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border2); border-radius: 18px;
+  padding: 36px; max-width: 600px; width: 100%; max-height: 88vh; overflow-y: auto;
+  position: relative; animation: popIn 0.28s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-close { position: absolute; top: 18px; right: 18px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+.modal-close:hover { color: var(--text); }
+.modal-title { font-family: var(--display); font-size: 26px; font-weight: 300; color: var(--text); margin-bottom: 4px; }
+.modal-sub { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; color: var(--dim); text-transform: uppercase; }
+.report-box {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px 24px; margin: 22px 0;
+  font-family: var(--mono); font-size: 11.5px; line-height: 2;
+  color: #7a94b8; white-space: pre-wrap; word-break: break-word;
+}
+.modal-actions { display: flex; gap: 10px; }
+.m-btn {
+  flex: 1; padding: 13px; border-radius: 11px;
+  font-family: var(--ui); font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: all 0.18s; border: 1px solid var(--border2);
+  background: transparent; color: var(--muted); letter-spacing: 0.02em;
+}
+.m-btn.pri { background: linear-gradient(135deg, #3b6fd4, #5b9cf6); color: #fff; border-color: transparent; }
+.m-btn:hover { opacity: 0.82; }
+@media (max-width: 520px) {
+  .img-row { grid-template-columns: 1fr; }
+  .logo-name { font-size: 34px; }
+  .dx-name { font-size: 20px; }
+  .modal { padding: 26px 18px; }
+  .drawer { padding: 28px 20px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hdr">
+    <div>
+      <div class="logo-eye">Clinical Differential Support</div>
+      <div class="logo-name">Clin<em>Dx</em></div>
+    </div>
+    <button class="icon-btn" onclick="openDrawer()" title="Settings">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </header>
+
+  <div id="formSection">
+    <div class="f-group">
+      <div class="f-label">Symptoms <span class="req">*</span></div>
+      <textarea id="symptoms" placeholder="Describe symptoms, onset, duration…"></textarea>
+    </div>
+    <div class="f-group">
+      <div class="f-label">Age <span class="req">*</span></div>
+      <input type="number" id="ageInput" min="0" max="120" placeholder="e.g. 45" style="max-width:160px">
+    </div>
+    <div class="f-group">
+      <div class="f-label">Medical History &amp; Current Medications <span class="opt">optional</span></div>
+      <textarea id="history" placeholder="e.g. HTN, DM Type 2, on Metformin 500mg, Lisinopril 10mg…" style="min-height:80px"></textarea>
+    </div>
+    <div class="f-group">
+      <div class="f-label">Abnormal Lab Results <span class="opt">optional</span></div>
+      <textarea id="labs" placeholder="e.g. WBC 14.5 k/uL, CRP 85 mg/L, Hgb 8.2 g/dL…"></textarea>
+    </div>
+    <div class="f-group">
+      <div class="f-label">Imaging <span class="opt">optional</span></div>
+      <div class="img-row">
+        <div class="sel-wrap">
+          <select id="imgType">
+            <option value="">— Select type —</option>
+            <option>X-Ray</option>
+            <option>CT Scan</option>
+            <option>CT Pulmonary Angiography</option>
+            <option>MRI</option>
+            <option>Ultrasound</option>
+            <option>Echocardiography</option>
+            <option>Doppler Ultrasound</option>
+            <option>PET-CT</option>
+            <option>Mammography</option>
+            <option>DXA</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <input type="text" id="imgFindings" placeholder="e.g. bilateral infiltrates…">
+      </div>
+    </div>
+    <div class="f-group">
+      <div class="f-label">Patient Sex</div>
+      <div class="tog-row">
+        <button class="tog" id="tMale"   onclick="setSex('Male')">Male</button>
+        <button class="tog" id="tFemale" onclick="setSex('Female')">Female</button>
+      </div>
+      <div class="preg-wrap" id="pregWrap">
+        <div class="f-label" style="margin-top:16px">Pregnancy Status</div>
+        <div class="tog-row">
+          <button class="tog" id="tPreg"    onclick="setPreg('Pregnant')">Pregnant</button>
+          <button class="tog" id="tNotPreg" onclick="setPreg('Not Pregnant')">Not Pregnant</button>
+        </div>
+      </div>
+    </div>
+    <button class="go-btn" id="goBtn" onclick="analyze()">Analyze Patient</button>
+    <div class="err" id="errBox"><strong id="errTitle">Error</strong><span id="errMsg"></span></div>
+  </div>
+
+  <div class="loading" id="loadingEl">
+    <div class="spin-ring"></div>
+    <div class="loading-label">Consulting clinical guidelines…</div>
+  </div>
+
+  <div class="results" id="resultsEl">
+    <div class="results-hdr">
+      <span class="results-hdr-label">Differential Diagnosis</span>
+      <div class="results-hdr-line"></div>
+    </div>
+    <div id="cards"></div>
+  </div>
+</div>
+
+<!-- DRAWER -->
+
+<div class="overlay" id="ovl" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  <div class="drawer-title">Settings</div>
+  <div>
+    <div class="f-label" style="margin-bottom:10px">Gemini API Key</div>
+    <input type="text" id="keyInput" placeholder="AIzaSy…" style="margin-bottom:8px;font-family:var(--mono);font-size:12px;">
+    <div id="keyPreview" class="key-preview"></div>
+    <div style="margin:12px 0 16px">
+      <a class="key-link" href="https://aistudio.google.com" target="_blank" rel="noopener">↗ Get free key at aistudio.google.com</a>
+    </div>
+    <button class="save-btn" onclick="saveKey()">Save Key</button>
+    <div class="key-ok" id="keyOk">✓ Key saved successfully</div>
+  </div>
+  <hr style="border:none;border-top:1px solid var(--border)">
+  <div class="drawer-note">Your API key is stored only in your browser's local storage and sent directly to Google's Gemini API. It is never stored on any external server.</div>
+</div>
+
+<!-- MODAL -->
+
+<div class="m-overlay" id="mOvl">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-title">Medical Report</div>
+    <div class="modal-sub">Generated by ClinDx</div>
+    <div class="report-box" id="reportBox"></div>
+    <div class="modal-actions">
+      <button class="m-btn pri" onclick="copyReport()">Copy Report</button>
+      <button class="m-btn" onclick="newCase()">New Case</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var sex = '', preg = '', reportText = '', dxStore = null;
+
+window.addEventListener('DOMContentLoaded', function() {
+  var saved = localStorage.getItem('clindx_key');
+  if (saved) {
+    document.getElementById('keyInput').value = saved;
+    document.getElementById('keyPreview').textContent = 'Current: ' + saved.slice(0,8) + '…';
+  }
+});
+
+function setSex(v) {
+  sex = v;
+  document.getElementById('tMale').classList.toggle('on', v === 'Male');
+  document.getElementById('tFemale').classList.toggle('on', v === 'Female');
+  document.getElementById('pregWrap').classList.toggle('show', v === 'Female');
+  if (v === 'Male') {
+    preg = '';
+    document.getElementById('tPreg').classList.remove('on');
+    document.getElementById('tNotPreg').classList.remove('on');
+  }
+}
+
+function setPreg(v) {
+  preg = v;
+  document.getElementById('tPreg').classList.toggle('on', v === 'Pregnant');
+  document.getElementById('tNotPreg').classList.toggle('on', v === 'Not Pregnant');
+}
+
+function openDrawer()  { document.getElementById('ovl').classList.add('show'); document.getElementById('drawer').classList.add('open'); }
+function closeDrawer() { document.getElementById('ovl').classList.remove('show'); document.getElementById('drawer').classList.remove('open'); }
+function closeModal()  { document.getElementById('mOvl').classList.remove('show'); }
+
+function saveKey() {
+  var k = document.getElementById('keyInput').value.trim();
+  if (!k) return;
+  localStorage.setItem('clindx_key', k);
+  document.getElementById('keyPreview').textContent = 'Current: ' + k.slice(0,8) + '…';
+  var ok = document.getElementById('keyOk');
+  ok.classList.add('show');
+  setTimeout(function() { ok.classList.remove('show'); }, 2500);
+}
+
+function showErr(title, msg) {
+  document.getElementById('errTitle').textContent = title || 'Error';
+  document.getElementById('errMsg').textContent = msg || '';
+  document.getElementById('errBox').classList.add('show');
+}
+function hideErr() { document.getElementById('errBox').classList.remove('show'); }
+
+function analyze() {
+  hideErr();
+
+  var symptoms  = document.getElementById('symptoms').value.trim();
+  var age       = document.getElementById('ageInput').value.trim();
+  var history   = document.getElementById('history').value.trim();
+  var labs      = document.getElementById('labs').value.trim();
+  var imgType   = document.getElementById('imgType').value;
+  var imgFind   = document.getElementById('imgFindings').value.trim();
+  var apiKey    = (localStorage.getItem('clindx_key') || document.getElementById('keyInput').value || '').trim();
+
+  if (!symptoms) { showErr('Missing Input', 'Please describe the patient symptoms.'); return; }
+  if (!age)      { showErr('Missing Input', 'Please enter the patient age.'); return; }
+  if (!sex)      { showErr('Missing Input', 'Please select patient sex.'); return; }
+  if (!apiKey)   { showErr('No API Key', 'Tap the ⚙ icon and paste your Gemini API key. Get a free key at aistudio.google.com'); return; }
+
+  var imaging    = imgType ? (imgType + (imgFind ? ': ' + imgFind : '')) : 'None';
+  var labsStr    = labs || 'None';
+  var historyStr = history || 'None';
+  var pregStr    = (sex === 'Female' && preg) ? preg : (sex === 'Female' ? 'Pregnancy status unknown' : '');
+  var patientStr = age + ' year-old ' + sex + (pregStr ? ', ' + pregStr : '');
+
+  var prompt = 'You are a clinical expert physician. Base your answers strictly on UpToDate, NICE Guidelines, AHA/ACC/ESC/IDSA/ADA guidelines, BMJ Best Practice, and Harrison\'s Principles.\n' +
+    'Patient: ' + patientStr + '\n' +
+    'Symptoms: ' + symptoms + '\n' +
+    'Medical History & Medications: ' + historyStr + '\n' +
+    'Labs: ' + labsStr + '\n' +
+    'Imaging: ' + imaging + '\n' +
+    'Respond with ONLY a raw JSON object (no markdown, no code fences, no extra text):\n' +
+    '{"diagnoses":[{"rank":1,"name":"","likelihood":0,"first_line":"","alternatives":"","guideline":""}]}\n' +
+    'Return exactly 3 diagnoses ranked by likelihood.';
+
+  document.getElementById('goBtn').disabled = true;
+  document.getElementById('loadingEl').classList.add('show');
+  document.getElementById('resultsEl').classList.remove('show');
+
+  var models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+  tryModel(models, 0, apiKey, prompt, { symptoms: symptoms, age: age, historyStr: historyStr, labsStr: labsStr, imaging: imaging, patientStr: patientStr });
+}
+
+function tryModel(models, idx, apiKey, prompt, ctx) {
+  if (idx >= models.length) {
+    document.getElementById('loadingEl').classList.remove('show');
+    document.getElementById('goBtn').disabled = false;
+    showErr('Analysis Failed', 'Could not get a response from Gemini. Check your API key and internet connection.');
+    return;
+  }
+
+  var model = models[idx];
+  var url   = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', url, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.timeout = 30000;
+
+  xhr.onload = function() {
+    var data;
+    try { data = JSON.parse(xhr.responseText); } catch(e) {
+      tryModel(models, idx + 1, apiKey, prompt, ctx); return;
+    }
+
+    if (data.error) {
+      var code = data.error.code || xhr.status;
+      var msg  = data.error.message || '';
+      var lmsg = msg.toLowerCase();
+
+      if (code === 429 || lmsg.indexOf('quota') > -1 || lmsg.indexOf('resource_exhausted') > -1) {
+        document.getElementById('loadingEl').classList.remove('show');
+        document.getElementById('goBtn').disabled = false;
+        showErr('Quota Exceeded', 'Gemini quota exceeded for this API key. Try a different key or wait for the quota to reset. Get a free key at aistudio.google.com');
+        return;
+      }
+      if (code === 400 || code === 403 || lmsg.indexOf('api_key') > -1 || lmsg.indexOf('invalid') > -1) {
+        document.getElementById('loadingEl').classList.remove('show');
+        document.getElementById('goBtn').disabled = false;
+        showErr('Invalid API Key', 'The API key was rejected by Google. Please check your key in Settings. Make sure the Gemini API is enabled.');
+        return;
+      }
+      tryModel(models, idx + 1, apiKey, prompt, ctx);
+      return;
+    }
+
+    var raw = '';
+    try { raw = data.candidates[0].content.parts[0].text; } catch(e) {
+      tryModel(models, idx + 1, apiKey, prompt, ctx); return;
+    }
+
+    // Clean response
+    raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    var match = raw.match(/\{[\s\S]*\}/);
+    if (!match) { tryModel(models, idx + 1, apiKey, prompt, ctx); return; }
+
+    var parsed;
+    try { parsed = JSON.parse(match[0]); } catch(e) {
+      tryModel(models, idx + 1, apiKey, prompt, ctx); return;
+    }
+
+    if (!parsed.diagnoses || !parsed.diagnoses.length) {
+      tryModel(models, idx + 1, apiKey, prompt, ctx); return;
+    }
+
+    document.getElementById('loadingEl').classList.remove('show');
+    document.getElementById('goBtn').disabled = false;
+    renderResults(parsed.diagnoses, ctx);
+  };
+
+  xhr.onerror = xhr.ontimeout = function() {
+    tryModel(models, idx + 1, apiKey, prompt, ctx);
+  };
+
+  xhr.send(JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 1500 }
+  }));
+}
+
+function renderResults(diagnoses, ctx) {
+  dxStore = { diagnoses: diagnoses, ctx: ctx };
+  var container = document.getElementById('cards');
+  container.innerHTML = '';
+  var labels = ['1st', '2nd', '3rd'];
+
+  for (var i = 0; i < Math.min(diagnoses.length, 3); i++) {
+    var dx  = diagnoses[i];
+    var div = document.createElement('div');
+    div.className = 'dx';
+    div.innerHTML =
+      '<div class="dx-head">' +
+        '<div class="dx-name">' + esc(dx.name) + '</div>' +
+        '<div class="rank-chip">' + labels[i] + '</div>' +
+      '</div>' +
+      '<div class="prob-row">' +
+        '<div class="prob-track"><div class="prob-fill" data-w="' + (dx.likelihood || 0) + '"></div></div>' +
+        '<div class="prob-num">' + (dx.likelihood || '—') + '%</div>' +
+      '</div>' +
+      '<div class="tx">' +
+        '<div class="tx-head"><span class="tx-lbl">First-line Treatment</span><span class="g-badge">' + esc(dx.guideline || '') + '</span></div>' +
+        '<div class="tx-body">' + esc(dx.first_line || '') + '</div>' +
+      '</div>' +
+      '<div class="tx">' +
+        '<div class="tx-head"><span class="tx-lbl">Alternative Treatments</span></div>' +
+        '<div class="tx-body">' + esc(dx.alternatives || '') + '</div>' +
+      '</div>' +
+      '<button class="sel-btn" onclick="selectDx(' + i + ')">Select this Diagnosis →</button>';
+    container.appendChild(div);
+  }
+
+  document.getElementById('resultsEl').classList.add('show');
+  document.getElementById('resultsEl').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  setTimeout(function() {
+    document.querySelectorAll('.prob-fill').forEach(function(b) { b.style.width = b.dataset.w + '%'; });
+  }, 80);
+}
+
+function selectDx(i) {
+  var dx  = dxStore.diagnoses[i];
+  var ctx = dxStore.ctx;
+  var date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  reportText =
+'MEDICAL REPORT\n' +
+'─'.repeat(44) + '\n' +
+'Date: ' + date + '\n\n' +
+'PATIENT\n' +
+'  ' + ctx.patientStr + '\n\n' +
+'PRESENTING COMPLAINTS\n' +
+'  ' + ctx.symptoms + '\n\n' +
+'MEDICAL HISTORY & MEDICATIONS\n' +
+'  ' + ctx.historyStr + '\n\n' +
+'INVESTIGATIONS\n' +
+'  Labs    : ' + ctx.labsStr + '\n' +
+'  Imaging : ' + ctx.imaging + '\n\n' +
+'ASSESSMENT\n' +
+'  ' + dx.name + '\n' +
+'  Probability: ' + dx.likelihood + '%\n\n' +
+'MANAGEMENT PLAN\n\n' +
+'  First-line Treatment:\n' +
+'  ' + dx.first_line + '\n\n' +
+'  Alternative Treatments:\n' +
+'  ' + dx.alternatives + '\n\n' +
+'  Guideline Reference: ' + dx.guideline + '\n\n' +
+'─'.repeat(44) + '\n' +
+'Physician Signature: _______________\n' +
+'Date: _____________________________';
+
+  document.getElementById('reportBox').textContent = reportText;
+  document.getElementById('mOvl').classList.add('show');
+}
+
+function copyReport() {
+  var btn = document.querySelector('.m-btn.pri');
+  try {
+    navigator.clipboard.writeText(reportText).then(function() {
+      btn.textContent = '✓ Copied!';
+      setTimeout(function() { btn.textContent = 'Copy Report'; }, 2200);
+    });
+  } catch(e) {
+    var ta = document.createElement('textarea');
+    ta.value = reportText;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '✓ Copied!';
+    setTimeout(function() { btn.textContent = 'Copy Report'; }, 2200);
+  }
+}
+
+function newCase() {
+  closeModal();
+  document.getElementById('symptoms').value = '';
+  document.getElementById('ageInput').value = '';
+  document.getElementById('history').value = '';
+  document.getElementById('labs').value = '';
+  document.getElementById('imgType').value = '';
+  document.getElementById('imgFindings').value = '';
+  sex = ''; preg = '';
+  document.querySelectorAll('.tog').forEach(function(t) { t.classList.remove('on'); });
+  document.getElementById('pregWrap').classList.remove('show');
+  document.getElementById('resultsEl').classList.remove('show');
+  hideErr();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+</script>
+
+</body>
+</html>
