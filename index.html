@@ -382,11 +382,11 @@ select option { background: var(--card2); }
   <button class="drawer-close" onclick="closeDrawer()">✕</button>
   <div class="drawer-title">Settings</div>
   <div>
-    <div class="f-label" style="margin-bottom:10px">Gemini API Key</div>
-    <input type="text" id="keyInput" placeholder="AIzaSy…" style="margin-bottom:8px;font-family:var(--mono);font-size:12px;">
+    <div class="f-label" style="margin-bottom:10px">OpenRouter API Key</div>
+    <input type="text" id="keyInput" placeholder="sk-or-v1-…" style="margin-bottom:8px;font-family:var(--mono);font-size:12px;">
     <div id="keyPreview" class="key-preview"></div>
     <div style="margin:12px 0 16px">
-      <a class="key-link" href="https://aistudio.google.com" target="_blank" rel="noopener">↗ Get free key at aistudio.google.com</a>
+      <a class="key-link" href="https://openrouter.ai/keys" target="_blank" rel="noopener">↗ Get free key at openrouter.ai/keys</a>
     </div>
     <button class="save-btn" onclick="saveKey()">Save Key</button>
     <div class="key-ok" id="keyOk">✓ Key saved successfully</div>
@@ -414,7 +414,7 @@ select option { background: var(--card2); }
 var sex = '', preg = '', reportText = '', dxStore = null;
 
 window.addEventListener('DOMContentLoaded', function() {
-  var saved = localStorage.getItem('clindx_key');
+  var saved = localStorage.getItem('clindx_or_key');
   if (saved) {
     document.getElementById('keyInput').value = saved;
     document.getElementById('keyPreview').textContent = 'Current: ' + saved.slice(0,8) + '…';
@@ -446,7 +446,7 @@ function closeModal()  { document.getElementById('mOvl').classList.remove('show'
 function saveKey() {
   var k = document.getElementById('keyInput').value.trim();
   if (!k) return;
-  localStorage.setItem('clindx_key', k);
+  localStorage.setItem('clindx_or_key', k);
   document.getElementById('keyPreview').textContent = 'Current: ' + k.slice(0,8) + '…';
   var ok = document.getElementById('keyOk');
   ok.classList.add('show');
@@ -469,12 +469,12 @@ function analyze() {
   var labs      = document.getElementById('labs').value.trim();
   var imgType   = document.getElementById('imgType').value;
   var imgFind   = document.getElementById('imgFindings').value.trim();
-  var apiKey    = (localStorage.getItem('clindx_key') || document.getElementById('keyInput').value || '').trim();
+  var apiKey    = (localStorage.getItem('clindx_or_key') || document.getElementById('keyInput').value || '').trim();
 
   if (!symptoms) { showErr('Missing Input', 'Please describe the patient symptoms.'); return; }
   if (!age)      { showErr('Missing Input', 'Please enter the patient age.'); return; }
   if (!sex)      { showErr('Missing Input', 'Please select patient sex.'); return; }
-  if (!apiKey)   { showErr('No API Key', 'Tap the ⚙ icon and paste your Gemini API key. Get a free key at aistudio.google.com'); return; }
+  if (!apiKey)   { showErr('No API Key', 'Tap the ⚙ icon and paste your Gemini API key. Get a free key at openrouter.ai'); return; }
 
   var imaging    = imgType ? (imgType + (imgFind ? ': ' + imgFind : '')) : 'None';
   var labsStr    = labs || 'None';
@@ -496,7 +496,7 @@ function analyze() {
   document.getElementById('loadingEl').classList.add('show');
   document.getElementById('resultsEl').classList.remove('show');
 
-  var models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+  var models = ['qwen/qwen-2.5-72b-instruct:free', 'qwen/qwen2.5-vl-72b-instruct:free', 'meta-llama/llama-3.3-70b-instruct:free'];
   tryModel(models, 0, apiKey, prompt, { symptoms: symptoms, age: age, historyStr: historyStr, labsStr: labsStr, imaging: imaging, patientStr: patientStr });
 }
 
@@ -504,17 +504,20 @@ function tryModel(models, idx, apiKey, prompt, ctx) {
   if (idx >= models.length) {
     document.getElementById('loadingEl').classList.remove('show');
     document.getElementById('goBtn').disabled = false;
-    showErr('Analysis Failed', 'Could not get a response from Gemini. Check your API key and internet connection.');
+    showErr('Analysis Failed', 'Could not get a response. Check your API key at openrouter.ai and your internet connection.');
     return;
   }
 
   var model = models[idx];
-  var url   = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+  var url   = 'https://openrouter.ai/api/v1/chat/completions';
 
   var xhr = new XMLHttpRequest();
   xhr.open('POST', url, true);
   xhr.setRequestHeader('Content-Type', 'application/json');
-  xhr.timeout = 30000;
+  xhr.setRequestHeader('Authorization', 'Bearer ' + apiKey);
+  xhr.setRequestHeader('HTTP-Referer', 'https://clindxx.vercel.app');
+  xhr.setRequestHeader('X-Title', 'ClinDx');
+  xhr.timeout = 40000;
 
   xhr.onload = function() {
     var data;
@@ -523,20 +526,14 @@ function tryModel(models, idx, apiKey, prompt, ctx) {
     }
 
     if (data.error) {
-      var code = data.error.code || xhr.status;
-      var msg  = data.error.message || '';
-      var lmsg = msg.toLowerCase();
-
-      if (code === 429 || lmsg.indexOf('quota') > -1 || lmsg.indexOf('resource_exhausted') > -1) {
-        document.getElementById('loadingEl').classList.remove('show');
-        document.getElementById('goBtn').disabled = false;
-        showErr('Quota Exceeded', 'Gemini quota exceeded for this API key. Try a different key or wait for the quota to reset. Get a free key at aistudio.google.com');
-        return;
+      var msg  = (data.error.message || '').toLowerCase();
+      if (msg.indexOf('quota') > -1 || msg.indexOf('limit') > -1 || xhr.status === 429) {
+        tryModel(models, idx + 1, apiKey, prompt, ctx); return;
       }
-      if (code === 400 || code === 403 || lmsg.indexOf('api_key') > -1 || lmsg.indexOf('invalid') > -1) {
+      if (xhr.status === 401 || msg.indexOf('auth') > -1 || msg.indexOf('key') > -1) {
         document.getElementById('loadingEl').classList.remove('show');
         document.getElementById('goBtn').disabled = false;
-        showErr('Invalid API Key', 'The API key was rejected by Google. Please check your key in Settings. Make sure the Gemini API is enabled.');
+        showErr('Invalid API Key', 'Please check your OpenRouter API key in Settings.');
         return;
       }
       tryModel(models, idx + 1, apiKey, prompt, ctx);
@@ -544,11 +541,10 @@ function tryModel(models, idx, apiKey, prompt, ctx) {
     }
 
     var raw = '';
-    try { raw = data.candidates[0].content.parts[0].text; } catch(e) {
+    try { raw = data.choices[0].message.content; } catch(e) {
       tryModel(models, idx + 1, apiKey, prompt, ctx); return;
     }
 
-    // Clean response
     raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
     var match = raw.match(/\{[\s\S]*\}/);
     if (!match) { tryModel(models, idx + 1, apiKey, prompt, ctx); return; }
@@ -572,8 +568,10 @@ function tryModel(models, idx, apiKey, prompt, ctx) {
   };
 
   xhr.send(JSON.stringify({
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 1500 }
+    model: model,
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.2,
+    max_tokens: 1500
   }));
 }
 
