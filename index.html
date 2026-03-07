@@ -382,11 +382,11 @@ select option { background: var(--card2); }
   <button class="drawer-close" onclick="closeDrawer()">✕</button>
   <div class="drawer-title">Settings</div>
   <div>
-    <div class="f-label" style="margin-bottom:10px">OpenRouter API Key</div>
-    <input type="text" id="keyInput" placeholder="sk-or-v1-…" style="margin-bottom:8px;font-family:var(--mono);font-size:12px;">
+    <div class="f-label" style="margin-bottom:10px">Groq API Key</div>
+    <input type="text" id="keyInput" placeholder="gsk_…" style="margin-bottom:8px;font-family:var(--mono);font-size:12px;">
     <div id="keyPreview" class="key-preview"></div>
     <div style="margin:12px 0 16px">
-      <a class="key-link" href="https://openrouter.ai/keys" target="_blank" rel="noopener">↗ Get free key at openrouter.ai/keys</a>
+      <a class="key-link" href="https://console.groq.com" target="_blank" rel="noopener">↗ Get free key at console.groq.com</a>
     </div>
     <button class="save-btn" onclick="saveKey()">Save Key</button>
     <div class="key-ok" id="keyOk">✓ Key saved successfully</div>
@@ -414,7 +414,7 @@ select option { background: var(--card2); }
 var sex = '', preg = '', reportText = '', dxStore = null;
 
 window.addEventListener('DOMContentLoaded', function() {
-  var saved = localStorage.getItem('clindx_or_key');
+  var saved = localStorage.getItem('clindx_groq_key');
   if (saved) {
     document.getElementById('keyInput').value = saved;
     document.getElementById('keyPreview').textContent = 'Current: ' + saved.slice(0,8) + '…';
@@ -446,7 +446,7 @@ function closeModal()  { document.getElementById('mOvl').classList.remove('show'
 function saveKey() {
   var k = document.getElementById('keyInput').value.trim();
   if (!k) return;
-  localStorage.setItem('clindx_or_key', k);
+  localStorage.setItem('clindx_groq_key', k);
   document.getElementById('keyPreview').textContent = 'Current: ' + k.slice(0,8) + '…';
   var ok = document.getElementById('keyOk');
   ok.classList.add('show');
@@ -469,7 +469,7 @@ function analyze() {
   var labs      = document.getElementById('labs').value.trim();
   var imgType   = document.getElementById('imgType').value;
   var imgFind   = document.getElementById('imgFindings').value.trim();
-  var apiKey    = (localStorage.getItem('clindx_or_key') || document.getElementById('keyInput').value || '').trim();
+  var apiKey    = (localStorage.getItem('clindx_groq_key') || document.getElementById('keyInput').value || '').trim();
 
   if (!symptoms) { showErr('Missing Input', 'Please describe the patient symptoms.'); return; }
   if (!age)      { showErr('Missing Input', 'Please enter the patient age.'); return; }
@@ -496,7 +496,7 @@ function analyze() {
   document.getElementById('loadingEl').classList.add('show');
   document.getElementById('resultsEl').classList.remove('show');
 
-  var models = ['qwen/qwen-2.5-72b-instruct:free', 'qwen/qwen2.5-vl-72b-instruct:free', 'meta-llama/llama-3.3-70b-instruct:free'];
+  var models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'];
   tryModel(models, 0, apiKey, prompt, { symptoms: symptoms, age: age, historyStr: historyStr, labsStr: labsStr, imaging: imaging, patientStr: patientStr });
 }
 
@@ -504,19 +504,15 @@ function tryModel(models, idx, apiKey, prompt, ctx) {
   if (idx >= models.length) {
     document.getElementById('loadingEl').classList.remove('show');
     document.getElementById('goBtn').disabled = false;
-    showErr('Analysis Failed', 'Could not get a response. Check your API key at openrouter.ai and your internet connection.');
+    showErr('Analysis Failed', 'Could not get a response. Please check your Groq API key in Settings.');
     return;
   }
 
   var model = models[idx];
-  var url   = 'https://openrouter.ai/api/v1/chat/completions';
-
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', url, true);
+  xhr.open('POST', 'https://api.groq.com/openai/v1/chat/completions', true);
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.setRequestHeader('Authorization', 'Bearer ' + apiKey);
-  xhr.setRequestHeader('HTTP-Referer', 'https://clindxx.vercel.app');
-  xhr.setRequestHeader('X-Title', 'ClinDx');
   xhr.timeout = 40000;
 
   xhr.onload = function() {
@@ -526,14 +522,11 @@ function tryModel(models, idx, apiKey, prompt, ctx) {
     }
 
     if (data.error) {
-      var msg  = (data.error.message || '').toLowerCase();
-      if (msg.indexOf('quota') > -1 || msg.indexOf('limit') > -1 || xhr.status === 429) {
-        tryModel(models, idx + 1, apiKey, prompt, ctx); return;
-      }
-      if (xhr.status === 401 || msg.indexOf('auth') > -1 || msg.indexOf('key') > -1) {
+      var msg = (data.error.message || '').toLowerCase();
+      if (xhr.status === 401 || msg.indexOf('auth') > -1 || msg.indexOf('key') > -1 || msg.indexOf('invalid') > -1) {
         document.getElementById('loadingEl').classList.remove('show');
         document.getElementById('goBtn').disabled = false;
-        showErr('Invalid API Key', 'Please check your OpenRouter API key in Settings.');
+        showErr('Invalid API Key', 'Please check your Groq API key in Settings. Get a key at console.groq.com');
         return;
       }
       tryModel(models, idx + 1, apiKey, prompt, ctx);
