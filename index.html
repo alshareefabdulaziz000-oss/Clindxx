@@ -279,14 +279,73 @@ select option { background: var(--card2); }
 }
 .m-btn.pri { background: linear-gradient(135deg, #1e40af, #1d4ed8); color: #fff; border-color: transparent; }
 .m-btn:hover { opacity: 0.82; }
-@media (max-width: 520px) {
-  .img-row { grid-template-columns: 1fr; }
-  .logo-name { font-size: 34px; }
-  .dx-name { font-size: 20px; }
-  .modal { padding: 26px 18px; }
-  .drawer { padding: 28px 20px; }
+.pathway-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-left: 3px solid #1d4ed8;
+  border-radius: 14px;
+  padding: 24px 26px;
+  margin-bottom: 12px;
+}
+.pathway-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: #1d4ed8;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pathway-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: #1d4ed8;
+  border-radius: 50%;
+}
+.pathway-step {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 14px;
+  align-items: flex-start;
+}
+.pathway-step:last-child { margin-bottom: 0; }
+.step-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: #fff;
+  background: #1d4ed8;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.step-body { flex: 1; }
+.step-test {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+.step-logic {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.65;
+}
+.step-logic .if-pos { color: #166534; font-weight: 500; }
+.step-logic .if-neg { color: #dc2626; font-weight: 500; }
+
+.img-row { grid-template-columns: 1fr; }
+.logo-name { font-size: 34px; }
+.dx-name { font-size: 20px; }
+.modal { padding: 26px 18px; }
+.drawer { padding: 28px 20px; }
 }
 </style>
+
 </head>
 <body>
 <div class="wrap">
@@ -372,6 +431,13 @@ select option { background: var(--card2); }
       <div class="results-hdr-line"></div>
     </div>
     <div id="cards"></div>
+    <div id="pathwaySection" style="display:none; margin-top:32px;">
+      <div class="results-hdr">
+        <span class="results-hdr-label">Clinical Decision Pathway</span>
+        <div class="results-hdr-line"></div>
+      </div>
+      <div id="pathwayContent"></div>
+    </div>
   </div>
 </div>
 
@@ -488,14 +554,10 @@ function analyze() {
     'Medical History & Medications: ' + historyStr + '\n' +
     'Available Labs: ' + labsStr + '\n' +
     'Available Imaging: ' + imaging + '\n\n' +
-    'CRITICAL INSTRUCTIONS:\n' +
-    '1. first_line: Write the EXACT drug name + dose + route + frequency + duration as per guidelines. Example: "Amoxicillin 500mg PO TID x 7 days (NICE NG193)". If diagnosis needs confirmation first, write the empiric/symptomatic treatment currently indicated.\n' +
-    '2. alternatives: EXACT alternative drug + dose + route + duration + reason for use.\n' +
-    '3. workup: List SPECIFIC investigations needed — do NOT write vague terms. Write exact test names with clinical reasoning. Examples: "CBC with differential (to assess leukocytosis/left shift)", "Blood cultures x2 sets before antibiotics (IDSA Sepsis Guidelines)", "Chest X-ray PA view (to rule out pneumonia/effusion)", "ECG 12-lead (to assess for ST changes per AHA 2022)", "HbA1c (ADA Standards of Care 2024 — target <7%)", "Procalcitonin (to guide antibiotic therapy per IDSA)", "Troponin I/T serial at 0h and 3h (ESC NSTEMI 2023 rapid rule-out protocol)". Always cite the guideline next to each test.\n' +
-    '4. guideline: Exact guideline name + year.\n\n' +
     'Return ONLY a raw JSON object, no markdown, no code fences:\n' +
-    '{"diagnoses":[{"rank":1,"name":"","likelihood":0,"first_line":"","alternatives":"","workup":"","guideline":""}]}\n' +
-    'Return exactly 3 diagnoses ranked by likelihood.';
+    '{"diagnoses":[{"rank":1,"name":"","likelihood":0,"first_line":"EXACT drug + dose + route + frequency + duration per guidelines e.g. Amoxicillin 500mg PO TID x7d (NICE NG193). If unconfirmed write empiric treatment.","alternatives":"EXACT alternative drug + dose + route + reason.","workup":"Specific test names with clinical reason and guideline citation per test. e.g. CBC with differential (assess leukocytosis — IDSA), Troponin I serial 0h/3h (ESC NSTEMI 2023).","guideline":"Exact guideline + year"}],' +
+    '"pathway":{"summary":"2-3 sentences: how to differentiate between these 3 diagnoses clinically and why it matters.","steps":[{"step":1,"test":"Exact test name","if_positive":"→ Supports Diagnosis 1 because [reason]. Next: [action]","if_negative":"→ Rules out Diagnosis 1. Consider Diagnosis 2. Next: [action]"},{"step":2,"test":"Exact test name","if_positive":"→ Confirms Diagnosis 2. Start [treatment]","if_negative":"→ Unlikely Diagnosis 2. Proceed to step 3"},{"step":3,"test":"Exact test name","if_positive":"→ Diagnosis 3 confirmed","if_negative":"→ Reconsider all differentials, seek specialist input"}]}}\n\n' +
+    'Return exactly 3 diagnoses. Pathway steps must be logical sequential decision tree based on guidelines.';
 
   document.getElementById('goBtn').disabled = true;
   document.getElementById('loadingEl').classList.add('show');
@@ -558,7 +620,7 @@ function tryModel(models, idx, apiKey, prompt, ctx) {
 
     document.getElementById('loadingEl').classList.remove('show');
     document.getElementById('goBtn').disabled = false;
-    renderResults(parsed.diagnoses, ctx);
+    renderResults(parsed.diagnoses, parsed.pathway, ctx);
   };
 
   xhr.onerror = xhr.ontimeout = function() {
@@ -569,11 +631,11 @@ function tryModel(models, idx, apiKey, prompt, ctx) {
     model: model,
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.2,
-    max_tokens: 1500
+    max_tokens: 2500
   }));
 }
 
-function renderResults(diagnoses, ctx) {
+function renderResults(diagnoses, pathway, ctx) {
   dxStore = { diagnoses: diagnoses, ctx: ctx };
   var container = document.getElementById('cards');
   container.innerHTML = '';
@@ -601,11 +663,48 @@ function renderResults(diagnoses, ctx) {
         '<div class="tx-body">' + esc(dx.alternatives || '') + '</div>' +
       '</div>' +
       '<div class="tx">' +
-        '<div class="tx-head"><span class="tx-lbl" style="color:#7ec8a0">Recommended Workup</span></div>' +
-        '<div class="tx-body" style="color:#7ec8a0">' + esc(dx.workup || '') + '</div>' +
+        '<div class="tx-head"><span class="tx-lbl" style="color:#166534">Recommended Workup</span></div>' +
+        '<div class="tx-body" style="color:#166534">' + esc(dx.workup || '') + '</div>' +
       '</div>' +
       '<button class="sel-btn" onclick="selectDx(' + i + ')">Select this Diagnosis →</button>';
     container.appendChild(div);
+  }
+
+  // Render pathway
+  var pathSection = document.getElementById('pathwaySection');
+  var pathContent = document.getElementById('pathwayContent');
+  if (pathway && pathway.steps && pathway.steps.length) {
+    var html = '';
+    // Summary card
+    if (pathway.summary) {
+      html += '<div class="pathway-card" style="border-left-color:#6b7280; margin-bottom:14px;">' +
+        '<div class="pathway-title" style="color:#374151;">Clinical Summary</div>' +
+        '<div style="font-size:14px; color:#374151; line-height:1.75;">' + esc(pathway.summary) + '</div>' +
+        '</div>';
+    }
+    // Steps
+    html += '<div class="pathway-card">' +
+      '<div class="pathway-title">Step-by-Step Decision Pathway</div>';
+    for (var j = 0; j < pathway.steps.length; j++) {
+      var s = pathway.steps[j];
+      html += '<div class="pathway-step">' +
+        '<div class="step-num">' + s.step + '</div>' +
+        '<div class="step-body">' +
+          '<div class="step-test">' + esc(s.test || '') + '</div>' +
+          '<div class="step-logic">' +
+            '<span class="if-pos">✓ If Positive: </span>' + esc(s.if_positive || '') +
+          '</div>' +
+          '<div class="step-logic" style="margin-top:4px;">' +
+            '<span class="if-neg">✗ If Negative: </span>' + esc(s.if_negative || '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+    pathContent.innerHTML = html;
+    pathSection.style.display = 'block';
+  } else {
+    pathSection.style.display = 'none';
   }
 
   document.getElementById('resultsEl').classList.add('show');
