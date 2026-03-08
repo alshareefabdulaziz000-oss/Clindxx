@@ -482,15 +482,20 @@ function analyze() {
   var pregStr    = (sex === 'Female' && preg) ? preg : (sex === 'Female' ? 'Pregnancy status unknown' : '');
   var patientStr = age + ' year-old ' + sex + (pregStr ? ', ' + pregStr : '');
 
-  var prompt = 'You are a clinical expert physician. Base your answers strictly on UpToDate, NICE Guidelines, AHA/ACC/ESC/IDSA/ADA guidelines, BMJ Best Practice, and Harrison\'s Principles.\n' +
+  var prompt = 'You are a clinical expert physician. Base ALL answers strictly and explicitly on UpToDate, NICE Guidelines, AHA/ACC/ESC/IDSA/ADA guidelines, BMJ Best Practice, and Harrison\'s Principles of Internal Medicine.\n\n' +
     'Patient: ' + patientStr + '\n' +
     'Symptoms: ' + symptoms + '\n' +
     'Medical History & Medications: ' + historyStr + '\n' +
-    'Labs: ' + labsStr + '\n' +
-    'Imaging: ' + imaging + '\n\n' +
+    'Available Labs: ' + labsStr + '\n' +
+    'Available Imaging: ' + imaging + '\n\n' +
+    'CRITICAL INSTRUCTIONS:\n' +
+    '1. first_line: Write the EXACT drug name + dose + route + frequency + duration as per guidelines. Example: "Amoxicillin 500mg PO TID x 7 days (NICE NG193)". If diagnosis needs confirmation first, write the empiric/symptomatic treatment currently indicated.\n' +
+    '2. alternatives: EXACT alternative drug + dose + route + duration + reason for use.\n' +
+    '3. workup: List SPECIFIC investigations needed — do NOT write vague terms. Write exact test names with clinical reasoning. Examples: "CBC with differential (to assess leukocytosis/left shift)", "Blood cultures x2 sets before antibiotics (IDSA Sepsis Guidelines)", "Chest X-ray PA view (to rule out pneumonia/effusion)", "ECG 12-lead (to assess for ST changes per AHA 2022)", "HbA1c (ADA Standards of Care 2024 — target <7%)", "Procalcitonin (to guide antibiotic therapy per IDSA)", "Troponin I/T serial at 0h and 3h (ESC NSTEMI 2023 rapid rule-out protocol)". Always cite the guideline next to each test.\n' +
+    '4. guideline: Exact guideline name + year.\n\n' +
     'Return ONLY a raw JSON object, no markdown, no code fences:\n' +
-    '{"diagnoses":[{"rank":1,"name":"Diagnosis Name","likelihood":75,"first_line":"Drug name + exact dose + route + duration (e.g. Amoxicillin 500mg PO TID x 7 days). If diagnosis is uncertain and more workup needed, write the symptomatic/empiric treatment currently indicated per guidelines.","alternatives":"Alternative drug name + exact dose + route + duration. State reason for use (e.g. if allergic to first-line).","workup":"List the specific investigations needed to confirm this diagnosis or rule out others. Include blood tests, imaging, cultures, etc.","guideline":"Exact guideline source e.g. NICE NG193 2023, AHA 2022, IDSA 2021"}]}\n' +
-    'Return exactly 3 diagnoses. For each diagnosis, always provide specific drug names with exact doses based on guidelines, never vague descriptions.';
+    '{"diagnoses":[{"rank":1,"name":"","likelihood":0,"first_line":"","alternatives":"","workup":"","guideline":""}]}\n' +
+    'Return exactly 3 diagnoses ranked by likelihood.';
 
   document.getElementById('goBtn').disabled = true;
   document.getElementById('loadingEl').classList.add('show');
